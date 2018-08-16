@@ -166,6 +166,7 @@ class Execer(object):
                                          debug_level=(self.debug_level > 2))
                 parsed = True
             except IndentationError as e:
+                print('indent except')
                 if original_error is None:
                     raise e
                 else:
@@ -173,9 +174,11 @@ class Execer(object):
             except SyntaxError as e:
                 if original_error is None:
                     original_error = e
-                if (e.loc is None) or (last_error_line == e.loc.lineno and
-                                       last_error_col in (e.loc.column + 1,
-                                                          e.loc.column)):
+                if (e.loc is None):# or (last_error_line == e.loc.lineno and
+                                   #    last_error_col in (e.loc.column + 1,
+                                   #                       e.loc.column)):
+                    print('location is:', e.loc)
+                    raise original_error
                     raise original_error from None
                 elif last_error_line != e.loc.lineno:
                     original_error = e
@@ -201,11 +204,16 @@ class Execer(object):
                     prev_indent = len(lines[idx - 1]) - len(lines[idx - 1].lstrip())
                     curr_indent = len(lines[idx]) - len(lines[idx].lstrip())
                     if prev_indent == curr_indent:
+                        print('indent issue')
                         raise original_error
                 lexer = self.parser.lexer
+                print('line', line)
+                print('last_error_col', last_error_col)
+                print('last_error_line', last_error_line)
                 maxcol = None if greedy else find_next_break(line,
                                                              mincol=last_error_col,
                                                              lexer=lexer)
+                print('maxcol', maxcol)
                 if not greedy and maxcol in (e.loc.column + 1, e.loc.column):
                     # go greedy the first time if the syntax error was because
                     # we hit an end token out of place. This usually indicates
@@ -228,6 +236,7 @@ class Execer(object):
                         continue
                     else:
                         # or for some other syntax error
+                        print("some other syntax error")
                         raise original_error
                 elif sbpline[last_error_col:].startswith('![![') or \
                         sbpline.lstrip().startswith('![!['):
@@ -238,6 +247,7 @@ class Execer(object):
                         greedy = True
                         continue
                     else:
+                        print('multiple ![![cmd]]', sbpline)
                         raise original_error
                 else:
                     # print some debugging info
