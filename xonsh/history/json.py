@@ -64,9 +64,9 @@ def _xhj_gc_bytes_to_rmfiles(hsize, files):
     return rmfiles
 
 
-def _xhj_get_history_files(sort=True, reverse=False):
+def _xhj_get_history_files(sort=True, newest_first=False):
     """Find and return the history files. Optionally sort files by
-        modify time.
+    modify time.
     """
     data_dir = builtins.__xonsh_env__.get('XONSH_DATA_DIR')
     data_dir = xt.expanduser_abs_path(data_dir)
@@ -78,7 +78,7 @@ def _xhj_get_history_files(sort=True, reverse=False):
         if builtins.__xonsh_env__.get('XONSH_DEBUG'):
             xt.print_exception("Could not collect xonsh history files.")
     if sort:
-        files.sort(key=lambda x: os.path.getmtime(x), reverse=reverse)
+        files.sort(key=lambda x: os.path.getmtime(x), reverse=newest_first)
     return files
 
 
@@ -379,12 +379,16 @@ class JsonHistory(History):
         self.buffer.clear()
         return hf
 
-    def items(self):
+    def items(self, newest_first=False):
         """Display history items of current session."""
-        for item, tss in zip(self.inps, self.tss):
+        if newest_first:
+            items = zip(reversed(self.inps), reversed(self.tss))
+        else:
+            items = zip(self.inps, self.tss)
+        for item, tss in items:
             yield {'inp': item.rstrip(), 'ts': tss[0]}
 
-    def all_items(self, **kwargs):
+    def all_items(self, newest_first=False, **kwargs):
         """
         Returns all history as found in XONSH_DATA_DIR.
 
@@ -392,7 +396,7 @@ class JsonHistory(History):
         """
         while self.gc and self.gc.is_alive():
             time.sleep(0.011)  # gc sleeps for 0.01 secs, sleep a beat longer
-        for f in _xhj_get_history_files():
+        for f in _xhj_get_history_files(newest_first=newest_first):
             try:
                 json_file = xlj.LazyJSON(f, reopen=False)
             except ValueError:
@@ -406,6 +410,8 @@ class JsonHistory(History):
                     msg = 'xonsh history file {0!r} is not valid JSON'
                     print(msg.format(f), file=sys.stderr)
                 continue
+            if newest_first:
+                commands = reversed(commands)
             for c in commands:
                 yield {'inp': c['inp'].rstrip(), 'ts': c['ts'][0]}
         # all items should also include session items
