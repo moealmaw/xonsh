@@ -122,3 +122,6 @@ def test_echo_line_cont():
     assert check_parse(code)
 
 
+def test_two_echo_line_cont():
+    code = "echo a and \\\necho b\n"
+    assert check_parse(code)
